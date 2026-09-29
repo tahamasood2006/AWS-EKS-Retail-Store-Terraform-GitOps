@@ -12,6 +12,8 @@ dependencies:
     alias: catalog
     version: 1.2.2
     repository: file://../../catalog/chart
+
+    
   - name: retail-store-sample-checkout-chart
     alias: checkout
     version: 1.2.2

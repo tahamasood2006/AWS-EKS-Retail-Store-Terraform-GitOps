@@ -17,23 +17,9 @@
   </strong>
 </div>
 
-This is a sample application designed to illustrate various concepts related to containers on AWS. It presents a sample retail store application including a product catalog, shopping cart and checkout, deployed using modern DevOps practices including GitOps and Infrastructure as Code.
+This is a sample application designed to illustrate various concepts related to containers on AWS. Github Actions, deployed using  GitOps and Infrastructure as Code.
 
-## Table of Contents
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Branch Strategy](#branch-strategy)
-- [Getting Started](#getting-started)
-- [GitOps Workflow](#gitops-workflow)
-- [EKS Auto Mode](#eks-auto-mode)
-- [Infrastructure Components](#infrastructure-components)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Monitoring and Observability](#monitoring-and-observability)
-- [Cleanup](https://github.com/LondheShubham153/retail-store-sample-app/blob/main/README.md#step-12-cleanup)
-- [Troubleshooting](#troubleshooting)
 
 ## Overview
 

@@ -1,0 +1,122 @@
+# this is a ci file for our retail but it still needs some tweaks and need to setup the secrets and env variable too
+# The cd is done through Argo Cd 
+name: CI 
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/cart/**"
+      - "src/catalog/**"
+      - "src/checkout/**"
+      - "src/orders/**"
+      - "src/ui/**"
+
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/cart/**"
+      - "src/catalog/**"
+      - "src/checkout/**"
+      - "src/orders/**"
+      - "src/ui/**"
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REGISTRY: <WRITEYOUR_ECRLINK_HERE_ecr.us-west-2.amazonaws.com>
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+
+    outputs:
+      cart: ${{ steps.filter.outputs.cart }}
+      catalog: ${{ steps.filter.outputs.catalog }}
+      checkout: ${{ steps.filter.outputs.checkout }}
+      orders: ${{ steps.filter.outputs.orders }}
+      ui: ${{ steps.filter.outputs.ui }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the detected changes 
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cart:
+              - "src/cart/**"
+            catalog:
+              - "src/catalog/**"
+            checkout:
+              - "src/checkout/**"
+            orders:
+              - "src/orders/**"
+            ui:
+              - "src/ui/**"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - cart
+          - catalog
+          - checkout
+          - orders
+          - ui
+
+    if: |
+      needs.detect-changes.outputs.cart == 'true' ||
+      needs.detect-changes.outputs.catalog == 'true' ||
+      needs.detect-changes.outputs.checkout == 'true' ||
+      needs.detect-changes.outputs.orders == 'true' ||
+      needs.detect-changes.outputs.ui == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if service changed
+        id: check
+        run: |
+          echo "changed=${{ needs.detect-changes.outputs[matrix.service] }}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS
+        if: steps.check.outputs.changed == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        if: steps.check.outputs.changed == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and pushing image through docker push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          IMAGE=${{ env.ECR_REGISTRY }}/<NAME-demo-private>/${{ matrix.service }}
+          TAG=${GITHUB_SHA::8}
+
+          docker build -t $IMAGE:$TAG ./src/${{ matrix.service }}
+          docker push $IMAGE:$TAG
+
+      - name: Update Helm values
+        if: steps.check.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          FILE="src/${{ matrix.service }}/chart/values.yaml"
+          TAG=${GITHUB_SHA::8}
+
+          sed -i "s|repository:.*|repository: ${{ env.ECR_REGISTRY }}/<NAME-demo-private>/${{ matrix.service }}|" "$FILE"
+          sed -i "s|tag:.*|tag: $TAG|" "$FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "$FILE"
+          git commit -m "ci: update ${{ matrix.service }} image" || true
+          git push
